@@ -23,6 +23,7 @@ const app = express();
 const corsOptions = {
   origin: [
     'https://engro-ems-frontend.vercel.app',
+    'https://engro-ems-frontend.vercel.app/admin',
     'http://localhost:5173'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
