@@ -38,6 +38,18 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: err.message });
 });
+// server.js ke START mein
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://engro-ems-frontend.vercel.app');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI, {
