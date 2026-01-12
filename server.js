@@ -20,12 +20,13 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors(
-  {
-    origin: process.env.CLIENT_URL, // ❌ '*' NAHI
-    credentials: true,               // ✅ required
-  }
-));
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.options('*', cors());
 app.use(express.json());
 app.use((err, req, res, next) => {
   console.error(err.stack);
