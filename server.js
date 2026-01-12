@@ -23,13 +23,25 @@ const app = express();
 
 
 
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'https://engro-ems-frontend.vercel.app'||'http://localhost:5173',
+const allowedOrigins = [
+  'https://engro-ems-frontend.vercel.app',
+  'http://localhost:5173'
+];
 
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+app.use(cors());
 
 
 app.use(express.json());
