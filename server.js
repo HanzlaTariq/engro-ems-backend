@@ -20,20 +20,17 @@ dotenv.config();
 const app = express();
 
 // Middleware
-const corsOptions = {
-  origin: [
-    'https://engro-ems-frontend.vercel.app',
-    'http://localhost:5173'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  credentials: true,
-  optionsSuccessStatus: 200
-};
 
 
-app.use(cors(corsOptions));
-app.options('*', cors());
+
+app.use(cors(
+  {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],  
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }
+));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
