@@ -23,28 +23,17 @@ const app = express();
 
 /* ================= CORS ================= */
 
-const allowedOrigins = [
-  "https://engro-ems-frontend.vercel.app",
-  "http://localhost:5173",
-];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS Not Allowed"));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
 
-// 🔴 MOST IMPORTANT FOR VERCEL
-app.options("*", cors());
+app.use(cors({
+  origin: [
+    "https://engro-ems-frontend.vercel.app",
+    "http://localhost:5173"
+  ],
+  credentials: true
+}));
+
+
 
 /* ================= BODY ================= */
 
@@ -73,6 +62,11 @@ mongoose
   .catch((err) => console.error("MongoDB error:", err));
 
 /* ================= SERVERLESS EXPORT ================= */
+const PORT = process.env.PORT ;
 
-// ❌ app.listen() BILKUL NAHI
+if (process.env.PORT !== "production") {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  });
+}
 export const handler = serverless(app);
