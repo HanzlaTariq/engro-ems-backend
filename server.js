@@ -23,13 +23,13 @@ const app = express();
 
 /* ================= CORS ================= */
 
-
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:5173"
+].filter(Boolean);
 
 app.use(cors({
-  origin: [
-    "https://engro-ems-frontend.vercel.app",
-    "http://localhost:5173"
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 
