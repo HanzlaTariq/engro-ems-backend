@@ -1,5 +1,4 @@
 import express from "express";
-import serverless from "serverless-http";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -24,39 +23,21 @@ const app = express();
 /* ================= CORS ================= */
 
 const allowedOrigins = [
-  process.env.CLIENT_URL || "https://engro-ems-frontend.vercel.app",
+  "https://engro-ems-frontend.vercel.app",
   "http://localhost:5173",
-  "http://localhost:3000"
-].filter(Boolean);
+  "http://localhost:3000",
+];
 
-app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-// Preflight handling
-app.options("*", cors({
-  origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
-
-
+app.options("*", cors());
 
 /* ================= BODY ================= */
 
@@ -84,12 +65,16 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB error:", err));
 
-/* ================= SERVERLESS EXPORT ================= */
-const PORT = process.env.PORT ;
+/* ================= LOCAL SERVER ================= */
 
-if (process.env.PORT !== "production") {
+const PORT = process.env.PORT || 5000;
+
+if (process.env.NODE_ENV !== "production") {
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`Server running on ${PORT}`);
   });
 }
-export const handler = serverless(app);
+
+/* ================= EXPORT ================= */
+
+export default app;
