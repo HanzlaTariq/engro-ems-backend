@@ -14,8 +14,6 @@ import WeeklySpotCheckRoutes from "./routes/weeklySpotCheckRoutes.js";
 import QuarterlySpotCheckRoutes from "./routes/quarterlySpotCheckRoutes.js";
 import emptyBagRoutes from "./routes/emptyBagRecordRoutes.js";
 import preNumberStationaryRecordRoutes from "./routes/preNumberStationaryRecordRoutes.js";
-import { config } from 'dotenv';
-config();
 dotenv.config();
 const app = express();
 /* ================= CORS ================= */
