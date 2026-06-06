@@ -66,6 +66,51 @@ export const addUser = async (req, res) => {
   }
 };
 
+// Update user details
+export const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, city, province, address, warehouse } = req.body;
+    const adminId = req.userId;
+
+    const user = await User.findOne({ _id: id, createdBy: adminId });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ email, _id: { $ne: id } });
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+    }
+
+    if (user.role === "warehouse_manager" && warehouse) {
+      const wh = await Warehouse.findOne({ _id: warehouse, createdBy: adminId });
+      if (!wh) return res.status(403).json({ message: "Warehouse not assigned to you" });
+    }
+
+    const updates = {
+      name,
+      email,
+      phone,
+      city,
+      province,
+      address,
+    };
+
+    if (user.role === "warehouse_manager") {
+      updates.warehouse = warehouse || undefined;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(id, updates, { new: true })
+      .populate('warehouse warehouses', 'name location');
+
+    res.json({ message: "User updated successfully", user: updatedUser });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ message: err.message });
+  }
+};
+
 // Assign warehouses to DO (warehouse validate)
 export const assignWarehouses = async (req, res) => {
   try {
