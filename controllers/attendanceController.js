@@ -23,7 +23,7 @@ export const createAttendance = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized – login again to get user ID" });
     }
 
-    const { date, timeIn, timeOut, whiSignature, directDiversion, totalHandling } = req.body;
+    const { date, timeIn, timeOut, whiSignature, directDiversion, totalHandling , storageLocation , plantCode } = req.body;
 
     if (!date || !timeIn || !timeOut || !whiSignature) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -46,6 +46,8 @@ export const createAttendance = async (req, res) => {
       directDiversion: directDiversion || 0,
       totalHandling: totalHandling || 0,
       whiSignature,
+      Location: storageLocation || "",  // ✅ Add Location
+      plantCode: plantCode || "",        // ✅ Add Plant Code
       createdBy: req.userId,  // ✅ Ye set hoga ab
     });
 

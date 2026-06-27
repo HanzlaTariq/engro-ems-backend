@@ -26,6 +26,16 @@ const AttendanceSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    Location: {
+      type: String,
+      required: [true, "Location is required"],
+      trim: true,
+    },
+    plantCode: {
+      type: String,
+      required: [true, "Plant is required"],
+      trim: true,
+    },
     whiSignature: {
       type: String,
       required: [true, "Signature is required"],
