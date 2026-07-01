@@ -14,6 +14,8 @@ export const createEmptyBagRecord = async (req, res) => {
       issuencePurpose,
       perRef,
       balanceQty,
+      storageLocation,
+      plantCode,
       whiInitial
     } = req.body;
 
@@ -48,6 +50,8 @@ export const createEmptyBagRecord = async (req, res) => {
       issuencePurpose,
       perRef,
       balanceQty,
+      storageLocation,
+      plantCode,
       whiInitial,
       doVerified: "DO Not Verified",
       warehouse: warehouseId,

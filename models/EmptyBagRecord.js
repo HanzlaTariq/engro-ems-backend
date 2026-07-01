@@ -9,6 +9,8 @@ const emptyBagRecordSchema = new mongoose.Schema({
   issuencePurpose: { type: String, required: true },
   perRef: { type: String, required: true },
   balanceQty: { type: Number, required: true },
+  storageLocation: { type: String },
+  plantCode: { type: String },
   whiInitial: { type: String, required: true },
   doVerified: { type: String, default: 'DO Not Verified' },
   doEmail: { type: String },
