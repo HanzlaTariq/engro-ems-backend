@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 
 const weeklySpotCheckSchema = new mongoose.Schema({
   date: { type: Date, required: true },
+  storageLocation: String,
+  plantCode: String,
   stocks: [{
     item: { type: String, required: true },
     sitQty: { type: Number, required: true },
