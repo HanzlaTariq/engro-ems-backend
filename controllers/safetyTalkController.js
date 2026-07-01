@@ -3,7 +3,7 @@ import SafetyTalk from "../models/SafetyTalk.js";
 // Create
 export const createSafetyTalk = async (req, res) => {
   try {
-    const { date, time, conductedBy, noOfLabours, hcPresent, topic, remarks } = req.body;
+    const { date, time, conductedBy, noOfLabours, hcPresent, topic, storageLocation, plantCode, remarks } = req.body;
 
     if (!date || !time || !conductedBy || !noOfLabours || !hcPresent || !topic) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -16,6 +16,8 @@ export const createSafetyTalk = async (req, res) => {
       noOfLabours,
       hcPresent,
       topic,
+      storageLocation: storageLocation || "",
+      plantCode: plantCode || "",
       remarks: remarks || "Excellent",
       createdBy: req.userId  // ✅ Auto-set
     });

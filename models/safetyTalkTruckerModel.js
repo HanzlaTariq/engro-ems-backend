@@ -8,6 +8,8 @@ const safetyTalkTruckerSchema = new mongoose.Schema(
     truckNo: { type: String, required: true },
     driverName: { type: String, required: true },
     topic: { type: String, required: true },
+    storageLocation: { type: String },
+    plantCode: { type: String },
     remarks: { type: String, default: "Excellent" },
     createdBy: {  // ✅ Ye add kar: User ID link
       type: mongoose.Schema.Types.ObjectId,

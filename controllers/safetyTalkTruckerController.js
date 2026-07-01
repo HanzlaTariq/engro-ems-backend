@@ -3,7 +3,7 @@ import SafetyTalkTrucker from "../models/safetyTalkTruckerModel.js";
 // Create new safety talk record
 export const createSafetyTalkTrucker = async (req, res) => {
   try {
-    const { date, time, conductedBy, truckNo, driverName, topic, remarks } = req.body;
+    const { date, time, conductedBy, truckNo, driverName, topic, storageLocation, plantCode, remarks } = req.body;
 
     if (!date || !time || !conductedBy || !truckNo || !driverName || !topic) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -16,6 +16,8 @@ export const createSafetyTalkTrucker = async (req, res) => {
       truckNo,
       driverName,
       topic,
+      storageLocation: storageLocation || "",
+      plantCode: plantCode || "",
       remarks: remarks || "Excellent",
       createdBy: req.userId  // ✅ Auto-set from middleware
     });

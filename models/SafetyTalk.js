@@ -7,6 +7,8 @@ const SafetyTalkSchema = new mongoose.Schema({
   noOfLabours: { type: Number, required: true },
   hcPresent: { type: String, enum: ["Yes", "No"], required: true },
   topic: { type: String, required: true },
+  storageLocation: { type: String },
+  plantCode: { type: String },
   remarks: { type: String,  required: true },
   createdBy: {  // ✅ Ye add kar: User ID link
     type: mongoose.Schema.Types.ObjectId,
