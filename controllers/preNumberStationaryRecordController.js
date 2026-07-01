@@ -5,7 +5,7 @@ import User from "../models/User.js";
 // Create (auto-set warehouse)
 export const createPreNumberStationaryRecord = async (req, res) => {
   try {
-    const { bookNo, receiptDate, from, to, startDate, endDate, purpose, whiInitial } = req.body;
+    const { bookNo, receiptDate, from, to, startDate, endDate, purpose, storageLocation, plantCode, whiInitial } = req.body;
 
     if (!bookNo || !receiptDate || !from || !to ||  !purpose || !whiInitial) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -27,6 +27,8 @@ export const createPreNumberStationaryRecord = async (req, res) => {
       startDate,
       endDate,
       purpose,
+      storageLocation: storageLocation || "",
+      plantCode: plantCode || "",
       whiInitial,
       doVerified: "DO Not Verified",
       warehouse: warehouseId,

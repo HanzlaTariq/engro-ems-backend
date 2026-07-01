@@ -8,6 +8,8 @@ const preNumberStationaryRecordSchema = new mongoose.Schema({
   startDate: { type: Date },
   endDate: { type: Date },
   purpose: { type: String, required: true },
+  storageLocation: { type: String },
+  plantCode: { type: String },
   whiInitial: { type: String, required: true },
   doVerified: { type: String, default: "DO Not Verified" },
   doEmail: { type: String },
