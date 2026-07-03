@@ -73,6 +73,7 @@ const weeklySpotCheckSchema = new mongoose.Schema({
   fireExtinguishers: [{
     lastRefill: Date,
     expiry: Date,
+    quantity: Number,
     pressure: String,
     nozzle: String,
     seal: String
