@@ -4,17 +4,22 @@ import {
   getSafetyTalkTrucker, 
   getMySafetyTalkTrucker, 
   updateSafetyTalkTrucker, 
-  deleteSafetyTalkTrucker 
+  deleteSafetyTalkTrucker,
+  verifySafetyTalkTrucker,
 } from "../controllers/safetyTalkTruckerController.js";
 import auth from "../middleware/authMiddleware.js";  // Tera middleware
+import { verifyAdmin } from "../middleware/verifyAdmin.js";
 
 const router = express.Router();
 
-// ✅ User-specific aur admin routes
+// ✅ User-specific routes
 router.post("/", auth, createSafetyTalkTrucker);
 router.get("/my", auth, getMySafetyTalkTrucker);  // Sirf apne records
-router.get("/", auth, getSafetyTalkTrucker);  // Admin all
 router.put("/:id", auth, updateSafetyTalkTrucker);
-router.delete("/:id", auth, deleteSafetyTalkTrucker);  // Optional
+router.delete("/:id", auth, deleteSafetyTalkTrucker);
+
+// ✅ Admin routes
+router.get("/", auth, verifyAdmin, getSafetyTalkTrucker);  // Admin all (filtered)
+router.put("/verify/:id", auth, verifyAdmin, verifySafetyTalkTrucker);  // Admin verify
 
 export default router;

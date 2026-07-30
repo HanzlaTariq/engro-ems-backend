@@ -11,6 +11,13 @@ const safetyTalkTruckerSchema = new mongoose.Schema(
     storageLocation: { type: String },
     plantCode: { type: String },
     remarks: { type: String, default: "Excellent" },
+    doVerified: { type: String, default: "DO Not Verified" },
+    doEmail: { type: String },
+    warehouse: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Warehouse",
+      required: true
+    },
     createdBy: {  // ✅ Ye add kar: User ID link
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

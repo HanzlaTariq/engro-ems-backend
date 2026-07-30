@@ -1,5 +1,6 @@
-
 import Attendance from "../models/Attendance.js";
+import Warehouse from "../models/Warehouse.js";
+import User from "../models/User.js";
 
 const toMinutes = (timeStr) => {
   const [hours, minutes] = timeStr.split(":").map(Number);
@@ -38,6 +39,14 @@ export const createAttendance = async (req, res) => {
     const routineEnd = toMinutes("17:30");
     const extraMinutes = outMinutes > routineEnd ? outMinutes - routineEnd : 0;
 
+    // Get user's assigned warehouse (same pattern as Empty Bag / Pre-Stationary records)
+    const user = await User.findById(req.userId).populate("warehouse");
+    const warehouseId = user?.warehouse?._id;
+
+    if (!warehouseId) {
+      return res.status(400).json({ message: "No warehouse assigned to you" });
+    }
+
     const attendance = new Attendance({
       date,
       timeIn,
@@ -48,6 +57,8 @@ export const createAttendance = async (req, res) => {
       whiSignature,
       Location: storageLocation || "",  // ✅ Add Location
       plantCode: plantCode || "",        // ✅ Add Plant Code
+      doVerified: "DO Not Verified",
+      warehouse: warehouseId,
       createdBy: req.userId,  // ✅ Ye set hoga ab
     });
 
@@ -85,24 +96,27 @@ export const getMyAttendances = async (req, res) => {
   }
 };
 
-// Get ALL attendances (admin-only)
+// Get ALL attendances (admin-only, scoped to warehouses the admin created)
 export const getAttendances = async (req, res) => {
   try {
-    // Admin check (agar req.user.role available hai middleware se)
-    if (req.user?.role !== 'Admin') {
-      return res.status(403).json({ message: "Admin access only" });
-    }
+    const adminId = req.userId;
 
-    // ... rest same (pagination + saara data)
-    const { page = 1, limit = 10 } = req.query;
+    const adminWarehouses = await Warehouse.find({ createdBy: adminId }).select("_id");
+    const warehouseIds = adminWarehouses.map((w) => w._id);
+
+    const { page = 1, limit = 1000 } = req.query;
     const skip = (page - 1) * Number(limit);
 
-    const attendances = await Attendance.find()
+    const filter = { warehouse: { $in: warehouseIds } };
+
+    const attendances = await Attendance.find(filter)
+      .populate("warehouse", "name location")
+      .populate("createdBy", "email")
       .sort({ date: -1 })
       .skip(skip)
       .limit(Number(limit));
 
-    const total = await Attendance.countDocuments();
+    const total = await Attendance.countDocuments(filter);
 
     res.status(200).json({
       attendances,
@@ -112,6 +126,38 @@ export const getAttendances = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Error fetching records", error: error.message });
+  }
+};
+
+// Verify (Admin only)
+export const verifyAttendance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminEmail } = req.body;
+
+    const record = await Attendance.findById(id).populate("warehouse");
+
+    if (!record) {
+      return res.status(404).json({ message: "Record not found" });
+    }
+
+    if (!record.warehouse || record.warehouse.createdBy.toString() !== req.userId.toString()) {
+      return res.status(403).json({ message: "Record not from your warehouse" });
+    }
+
+    if (record.doVerified === "Verified") {
+      return res.status(400).json({ message: "Record is already verified" });
+    }
+
+    const updated = await Attendance.findByIdAndUpdate(
+      id,
+      { doVerified: "Verified", doEmail: adminEmail },
+      { new: true }
+    );
+
+    res.json({ message: "Verified successfully", updated });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 };
 
@@ -127,8 +173,18 @@ export const updateAttendance = async (req, res) => {
       return res.status(403).json({ message: "Access denied: Not your record" });
     }
 
+    if (existing.doVerified === "Verified") {
+      return res.status(400).json({
+        message: "Cannot edit a verified record. This record has been verified by DO and cannot be modified."
+      });
+    }
+
     // ... rest same (time validation, updateData, findByIdAndUpdate)
     let updateData = { ...req.body };
+    delete updateData.doVerified;
+    delete updateData.doEmail;
+    delete updateData.warehouse;
+    delete updateData.createdBy;
 
     // Recalculate extraTime if needed
     if (req.body.timeIn || req.body.timeOut) {
@@ -164,6 +220,11 @@ export const deleteAttendance = async (req, res) => {
     if (!existing) {
       return res.status(403).json({ message: "Access denied: Not your record" });
     }
+
+    if (existing.doVerified === "Verified") {
+      return res.status(400).json({ message: "Cannot delete a verified record." });
+    }
+
     const deleted = await Attendance.findByIdAndDelete(id);
     res.status(200).json({ message: "Attendance deleted successfully", deleted });
   } catch (error) {
@@ -171,4 +232,3 @@ export const deleteAttendance = async (req, res) => {
     res.status(400).json({ message: "Error deleting record", error: error.message });
   }
 };
-

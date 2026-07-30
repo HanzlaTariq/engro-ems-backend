@@ -1,4 +1,6 @@
 import SafetyTalkTrucker from "../models/safetyTalkTruckerModel.js";
+import Warehouse from "../models/Warehouse.js";
+import User from "../models/User.js";
 
 // Create new safety talk record
 export const createSafetyTalkTrucker = async (req, res) => {
@@ -7,6 +9,14 @@ export const createSafetyTalkTrucker = async (req, res) => {
 
     if (!date || !time || !conductedBy || !truckNo || !driverName || !topic) {
       return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Get user's assigned warehouse
+    const user = await User.findById(req.userId).populate("warehouse");
+    const warehouseId = user?.warehouse?._id;
+
+    if (!warehouseId) {
+      return res.status(400).json({ message: "No warehouse assigned to you" });
     }
 
     const record = new SafetyTalkTrucker({
@@ -19,6 +29,8 @@ export const createSafetyTalkTrucker = async (req, res) => {
       storageLocation: storageLocation || "",
       plantCode: plantCode || "",
       remarks: remarks || "Excellent",
+      doVerified: "DO Not Verified",
+      warehouse: warehouseId,
       createdBy: req.userId  // ✅ Auto-set from middleware
     });
 
@@ -35,6 +47,7 @@ export const getMySafetyTalkTrucker = async (req, res) => {
   try {
     const userId = req.userId;
     const records = await SafetyTalkTrucker.find({ createdBy: userId })
+      .populate("warehouse", "name location")
       .sort({ date: -1, time: -1 });  // Latest first
 
     res.json({ records });
@@ -44,15 +57,17 @@ export const getMySafetyTalkTrucker = async (req, res) => {
   }
 };
 
-// Get ALL records (admin-only, optional)
+// Get ALL records (admin-only, scoped to warehouses the admin created)
 export const getSafetyTalkTrucker = async (req, res) => {
   try {
-    // Admin check (agar req.user.role available hai)
-    if (req.user?.role !== 'warehouse_manager' && req.user?.role !== 'DO') {  // Adjust roles as per model
-      return res.status(403).json({ message: "Access denied" });
-    }
+    const adminId = req.userId;
 
-    const records = await SafetyTalkTrucker.find()
+    const adminWarehouses = await Warehouse.find({ createdBy: adminId }).select("_id");
+    const warehouseIds = adminWarehouses.map((w) => w._id);
+
+    const records = await SafetyTalkTrucker.find({ warehouse: { $in: warehouseIds } })
+      .populate("warehouse", "name location")
+      .populate("createdBy", "email")
       .sort({ date: -1, time: -1 });
 
     res.json({ records });
@@ -66,7 +81,6 @@ export const getSafetyTalkTrucker = async (req, res) => {
 export const updateSafetyTalkTrucker = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
 
     // Ownership check
     const existing = await SafetyTalkTrucker.findOne({ _id: id, createdBy: req.userId });
@@ -74,10 +88,22 @@ export const updateSafetyTalkTrucker = async (req, res) => {
       return res.status(403).json({ message: "Access denied: Not your record" });
     }
 
-    const updated = await SafetyTalkTrucker.findByIdAndUpdate(id, updates, {
+    if (existing.doVerified === "Verified") {
+      return res.status(400).json({
+        message: "Cannot edit a verified record. This record has been verified by DO and cannot be modified."
+      });
+    }
+
+    const updateData = { ...req.body };
+    delete updateData.doVerified;
+    delete updateData.doEmail;
+    delete updateData.warehouse;
+    delete updateData.createdBy;
+
+    const updated = await SafetyTalkTrucker.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true
-    });
+    }).populate("warehouse", "name location");
 
     res.json({ message: "Record updated successfully", updated });
   } catch (error) {
@@ -86,16 +112,64 @@ export const updateSafetyTalkTrucker = async (req, res) => {
   }
 };
 
-// Delete record (optional, agar chahiye)
+// Verify (Admin only)
+export const verifySafetyTalkTrucker = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminEmail } = req.body;
+
+    const record = await SafetyTalkTrucker.findById(id).populate("warehouse");
+
+    if (!record) {
+      return res.status(404).json({ message: "Record not found" });
+    }
+
+    if (record.warehouse.createdBy.toString() !== req.userId.toString()) {
+      return res.status(403).json({ message: "Record not from your warehouse" });
+    }
+
+    if (record.doVerified === "Verified") {
+      return res.status(400).json({ message: "Record is already verified" });
+    }
+
+    const updated = await SafetyTalkTrucker.findByIdAndUpdate(
+      id,
+      { doVerified: "Verified", doEmail: adminEmail },
+      { new: true }
+    );
+
+    res.json({ message: "Verified successfully", updated });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Delete record (user own & not verified / admin from own warehouse)
 export const deleteSafetyTalkTrucker = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deleted = await SafetyTalkTrucker.findOneAndDelete({ _id: id, createdBy: req.userId });
-    if (!deleted) {
+    const record = await SafetyTalkTrucker.findById(id).populate("warehouse");
+    if (!record) {
       return res.status(404).json({ message: "Record not found or access denied" });
     }
 
+    const isAdmin = await Warehouse.exists({ createdBy: req.userId });
+
+    if (!isAdmin) {
+      if (record.createdBy.toString() !== req.userId.toString()) {
+        return res.status(403).json({ message: "You can delete only your own records." });
+      }
+      if (record.doVerified === "Verified") {
+        return res.status(400).json({ message: "Cannot delete a verified record." });
+      }
+    } else {
+      if (record.warehouse.createdBy.toString() !== req.userId.toString()) {
+        return res.status(403).json({ message: "Record not from your warehouse." });
+      }
+    }
+
+    await SafetyTalkTrucker.findByIdAndDelete(id);
     res.json({ message: "Record deleted successfully" });
   } catch (error) {
     console.error(error);

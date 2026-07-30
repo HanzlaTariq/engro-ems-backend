@@ -9,6 +9,7 @@ const warehouseSchema = new mongoose.Schema({
   capacity: String,
   contactPerson: String,
   contactPhone: String,
+  status: { type: String, enum: ["Active", "Inactive"], default: "Active" },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User"}
 }, { timestamps: true });
 
