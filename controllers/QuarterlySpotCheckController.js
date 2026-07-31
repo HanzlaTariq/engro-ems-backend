@@ -62,6 +62,58 @@ export const getQuarterlySpotCheck = async (req, res) => {
 };
 
 
+// Get ONE record by id (owner only) — used to prefill the edit form
+export const getQuarterlySpotCheckById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const record = await QuarterlySpotCheck.findOne({ _id: id, createdBy: req.userId });
+
+    if (!record) {
+      return res.status(404).json({ message: "Record not found" });
+    }
+
+    res.json({ data: record });
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching record" });
+  }
+};
+
+// Update (owner only, blocked once verified by DO)
+export const updateQuarterlySpotCheck = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existing = await QuarterlySpotCheck.findOne({ _id: id, createdBy: req.userId });
+    if (!existing) {
+      return res.status(403).json({ message: "Access denied: Not your record" });
+    }
+
+    if (existing.verifiedBy === "Verified") {
+      return res.status(400).json({
+        message: "Cannot edit a verified record. This record has been verified by DO and cannot be modified."
+      });
+    }
+
+    const updateData = { ...req.body };
+    delete updateData.verifiedBy;
+    delete updateData.doEmail;
+    delete updateData.doVerifiedAt;
+    delete updateData.warehouse;
+    delete updateData.createdBy;
+
+    const updated = await QuarterlySpotCheck.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true
+    });
+
+    res.json({ message: "Record updated successfully", updated });
+  } catch (error) {
+    console.error("Update error:", error);
+    res.status(400).json({ message: error.message });
+  }
+};
+
+
 export const verifyQuarterlyspotcheck = async (req, res) => {
   try {
     const { id } = req.params;
@@ -79,7 +131,7 @@ export const verifyQuarterlyspotcheck = async (req, res) => {
 
     const updated = await QuarterlySpotCheck.findByIdAndUpdate(
       id,
-      { verifiedBy: "Verified", doEmail: adminEmail },
+      { verifiedBy: "Verified", doEmail: adminEmail, doVerifiedAt: new Date() },
       { new: true }
     );
 
