@@ -1,6 +1,7 @@
 import SafetyTalk from "../models/SafetyTalk.js";
 import Warehouse from "../models/Warehouse.js";
 import User from "../models/User.js";
+import { notifyRecordReverted } from "../utils/notifyUser.js";
 
 // Create
 export const createSafetyTalk = async (req, res) => {
@@ -90,11 +91,21 @@ export const updateSafetyTalk = async (req, res) => {
       });
     }
 
+    // Never trust status-related fields from the client — editing a
+    // previously reverted record resubmits it for DO review.
     const updateData = { ...req.body };
     delete updateData.doVerified;
     delete updateData.doEmail;
+    delete updateData.rejectionReason;
+    delete updateData.rejectedAt;
     delete updateData.warehouse;
     delete updateData.createdBy;
+    delete updateData._id;
+
+    updateData.doVerified = "DO Not Verified";
+    updateData.doEmail = "";
+    updateData.rejectionReason = "";
+    updateData.rejectedAt = null;
 
     const updated = await SafetyTalk.findByIdAndUpdate(id, updateData, { new: true })
       .populate("warehouse", "name location");
@@ -160,6 +171,34 @@ export const deleteSafetyTalk = async (req, res) => {
       if (record.warehouse.createdBy.toString() !== req.userId.toString()) {
         return res.status(403).json({ message: "Record not from your warehouse." });
       }
+
+      // 🔁 REVERT instead of permanent delete + notify the manager
+      const { reason } = req.body;
+
+      const reverted = await SafetyTalk.findByIdAndUpdate(
+        id,
+        {
+          doVerified: "Rejected",
+          rejectionReason: (reason || "").trim() || "No reason provided by DO",
+          rejectedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      await notifyRecordReverted({
+        recipientId: record.createdBy,
+        module: "SafetyTalk",
+        recordId: record._id,
+        formLabel: "Safety Talk Record",
+        reason,
+        revertedBy: req.user?.email,
+      });
+
+      return res.json({
+        success: true,
+        message: "Record reverted successfully. Warehouse manager has been notified.",
+        reverted,
+      });
     }
 
     await SafetyTalk.findByIdAndDelete(id);

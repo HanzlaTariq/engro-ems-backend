@@ -12,6 +12,8 @@ const SafetyTalkSchema = new mongoose.Schema({
   remarks: { type: String,  required: true },
   doVerified: { type: String, default: "DO Not Verified" },
   doEmail: { type: String },
+  rejectionReason: { type: String, default: "" },
+  rejectedAt: { type: Date },
   warehouse: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Warehouse",

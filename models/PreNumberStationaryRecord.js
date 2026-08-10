@@ -13,6 +13,8 @@ const preNumberStationaryRecordSchema = new mongoose.Schema({
   whiInitial: { type: String, required: true },
   doVerified: { type: String, default: "DO Not Verified" },
   doEmail: { type: String },
+  rejectionReason: { type: String, default: "" },
+  rejectedAt: { type: Date },
   warehouse: {  // Auto-set
     type: mongoose.Schema.Types.ObjectId,
     ref: "Warehouse",

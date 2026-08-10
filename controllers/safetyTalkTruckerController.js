@@ -1,6 +1,7 @@
 import SafetyTalkTrucker from "../models/safetyTalkTruckerModel.js";
 import Warehouse from "../models/Warehouse.js";
 import User from "../models/User.js";
+import { notifyRecordReverted } from "../utils/notifyUser.js";
 
 // Create new safety talk record
 export const createSafetyTalkTrucker = async (req, res) => {
@@ -97,8 +98,16 @@ export const updateSafetyTalkTrucker = async (req, res) => {
     const updateData = { ...req.body };
     delete updateData.doVerified;
     delete updateData.doEmail;
+    delete updateData.rejectionReason;
+    delete updateData.rejectedAt;
     delete updateData.warehouse;
     delete updateData.createdBy;
+    delete updateData._id;
+
+    updateData.doVerified = "DO Not Verified";
+    updateData.doEmail = "";
+    updateData.rejectionReason = "";
+    updateData.rejectedAt = null;
 
     const updated = await SafetyTalkTrucker.findByIdAndUpdate(id, updateData, {
       new: true,
@@ -167,6 +176,34 @@ export const deleteSafetyTalkTrucker = async (req, res) => {
       if (record.warehouse.createdBy.toString() !== req.userId.toString()) {
         return res.status(403).json({ message: "Record not from your warehouse." });
       }
+
+      // 🔁 REVERT instead of permanent delete + notify the manager
+      const { reason } = req.body;
+
+      const reverted = await SafetyTalkTrucker.findByIdAndUpdate(
+        id,
+        {
+          doVerified: "Rejected",
+          rejectionReason: (reason || "").trim() || "No reason provided by DO",
+          rejectedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      await notifyRecordReverted({
+        recipientId: record.createdBy,
+        module: "SafetyTalkTrucker",
+        recordId: record._id,
+        formLabel: "Safety Talk (Trucker) Record",
+        reason,
+        revertedBy: req.user?.email,
+      });
+
+      return res.json({
+        success: true,
+        message: "Record reverted successfully. Warehouse manager has been notified.",
+        reverted,
+      });
     }
 
     await SafetyTalkTrucker.findByIdAndDelete(id);

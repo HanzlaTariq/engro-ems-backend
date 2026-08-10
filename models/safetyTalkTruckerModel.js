@@ -13,6 +13,8 @@ const safetyTalkTruckerSchema = new mongoose.Schema(
     remarks: { type: String, default: "Excellent" },
     doVerified: { type: String, default: "DO Not Verified" },
     doEmail: { type: String },
+    rejectionReason: { type: String, default: "" },
+    rejectedAt: { type: Date },
     warehouse: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Warehouse",

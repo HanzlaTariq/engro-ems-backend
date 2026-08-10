@@ -1,6 +1,7 @@
 import WeeklySpotCheck from "../models/WeeklySpotCheck.js";
 import Warehouse from "../models/Warehouse.js";
 import User from "../models/User.js";
+import { notifyRecordReverted } from "../utils/notifyUser.js";
 
 // Create (auto-set warehouse)
 export const createWeeklySpotCheck = async (req, res) => {
@@ -97,8 +98,19 @@ export const updateWeeklySpotCheck = async (req, res) => {
     delete updateData.verifiedBy;
     delete updateData.doEmail;
     delete updateData.doVerifiedAt;
+    delete updateData.rejectionReason;
+    delete updateData.rejectedAt;
     delete updateData.warehouse;
     delete updateData.createdBy;
+    delete updateData._id;
+
+    // Never trust status-related fields from the client — editing a
+    // previously reverted record resubmits it for DO review.
+    updateData.verifiedBy = "";
+    updateData.doEmail = "";
+    updateData.doVerifiedAt = null;
+    updateData.rejectionReason = "";
+    updateData.rejectedAt = null;
 
     const updated = await WeeklySpotCheck.findByIdAndUpdate(id, updateData, {
       new: true,
@@ -175,6 +187,34 @@ export const deleteWeekySpotCheck = async (req, res) => {
           message: "Record not from your warehouse."
         });
       }
+
+      // 🔁 REVERT instead of permanent delete + notify the manager
+      const { reason } = req.body;
+
+      const reverted = await WeeklySpotCheck.findByIdAndUpdate(
+        id,
+        {
+          verifiedBy: "Rejected",
+          rejectionReason: (reason || "").trim() || "No reason provided by DO",
+          rejectedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      await notifyRecordReverted({
+        recipientId: record.createdBy,
+        module: "WeeklySpotCheck",
+        recordId: record._id,
+        formLabel: "Weekly Spot Check",
+        reason,
+        revertedBy: req.user?.email,
+      });
+
+      return res.json({
+        success: true,
+        message: "Record reverted successfully. Warehouse manager has been notified.",
+        reverted,
+      });
     }
 
     await WeeklySpotCheck.findByIdAndDelete(id);

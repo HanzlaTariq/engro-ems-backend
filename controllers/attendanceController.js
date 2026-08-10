@@ -76,7 +76,6 @@ export const createAttendance = async (req, res) => {
 export const getMyAttendances = async (req, res) => {
   try {
     const userId = req.userId;  // Middleware se
-    console.log('📋 Fetching attendance for user ID:', userId);  // Temp log
 
     const { page = 1, limit = 1000 } = req.query;
     const skip = (page - 1) * Number(limit);

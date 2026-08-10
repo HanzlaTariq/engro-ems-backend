@@ -15,6 +15,7 @@ import QuarterlySpotCheckRoutes from "./routes/quarterlySpotCheckRoutes.js";
 import emptyBagRoutes from "./routes/emptyBagRecordRoutes.js";
 import preNumberStationaryRecordRoutes from "./routes/preNumberStationaryRecordRoutes.js";
 import dashboardStatsRoutes from "./routes/dashboardStatsRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 dotenv.config();
 const app = express();
 /* ================= CORS ================= */
@@ -48,6 +49,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/safety-talk-trucker", safetyTalkTruckerRoutes);
 app.use("/api/pre-number-stationary-record", preNumberStationaryRecordRoutes);
 app.use("/api/dashboard-stats", dashboardStatsRoutes);
+app.use("/api/notifications", notificationRoutes);
 /* ================= DB ================= */
 // MongoDB connection with caching for Vercel
 let isConnected = false;

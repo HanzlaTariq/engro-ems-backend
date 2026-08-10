@@ -1,6 +1,7 @@
 import PreNumberStationaryRecord from "../models/PreNumberStationaryRecord.js";
 import Warehouse from "../models/Warehouse.js";
 import User from "../models/User.js";
+import { notifyRecordReverted } from "../utils/notifyUser.js";
 
 // Create (auto-set warehouse)
 export const createPreNumberStationaryRecord = async (req, res) => {
@@ -101,14 +102,23 @@ export const updatePreNumberStationaryRecord = async (req, res) => {
       });
     }
 
-    // Prepare update data
+    // Prepare update data. Never trust status-related fields from the client —
+    // editing a previously reverted record resubmits it for DO review, so the
+    // status, reviewer, and rejection info are always reset here explicitly.
     const updateData = { ...req.body };
-    
-    // Remove fields that shouldn't be updated
+
     delete updateData.doVerified;
     delete updateData.doEmail;
+    delete updateData.rejectionReason;
+    delete updateData.rejectedAt;
     delete updateData.warehouse;
     delete updateData.createdBy;
+    delete updateData._id;
+
+    updateData.doVerified = "DO Not Verified";
+    updateData.doEmail = "";
+    updateData.rejectionReason = "";
+    updateData.rejectedAt = null;
 
     const updated = await PreNumberStationaryRecord.findByIdAndUpdate(
       id,
@@ -173,34 +183,69 @@ export const verifyPreNumberStationaryRecord = async (req, res) => {
   }
 };
 
-// Delete (only if not verified)
+// Delete (user: only their own & only if not verified) / Revert (Admin)
 export const deletePreNumberStationaryRecord = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = await PreNumberStationaryRecord.findById(id);
+    const existing = await PreNumberStationaryRecord.findById(id).populate("warehouse");
 
     if (!existing) {
       return res.status(404).json({ message: "Record not found" });
     }
 
-    // Allow admin to delete any record OR creator to delete
-    if (existing.createdBy.toString() !== req.userId && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Access denied" });
-    }
+    const isAdmin = await Warehouse.exists({ createdBy: req.userId });
 
-    // Check if record is verified
-    if (existing.doVerified === "Verified") {
-      return res.status(400).json({ 
-        message: "Cannot delete a verified record. This record has been verified by DO." 
+    if (!isAdmin) {
+      // User can delete only their own, unverified records
+      if (existing.createdBy.toString() !== req.userId.toString()) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (existing.doVerified === "Verified") {
+        return res.status(400).json({
+          message: "Cannot delete a verified record. This record has been verified by DO."
+        });
+      }
+
+      await PreNumberStationaryRecord.findByIdAndDelete(id);
+
+      return res.json({
+        success: true,
+        message: "Record deleted successfully"
       });
     }
 
-    await PreNumberStationaryRecord.findByIdAndDelete(id);
+    // Admin path: revert instead of permanent delete, and notify the manager
+    if (existing.warehouse.createdBy.toString() !== req.userId.toString()) {
+      return res.status(403).json({ message: "Record not from your warehouse." });
+    }
 
-    res.json({ 
+    const { reason } = req.body;
+
+    const reverted = await PreNumberStationaryRecord.findByIdAndUpdate(
+      id,
+      {
+        doVerified: "Rejected",
+        rejectionReason: (reason || "").trim() || "No reason provided by DO",
+        rejectedAt: new Date(),
+      },
+      { new: true }
+    );
+
+    await notifyRecordReverted({
+      recipientId: existing.createdBy,
+      module: "PreNumberStationaryRecord",
+      recordId: existing._id,
+      formLabel: "Pre-Numbered Stationary Record",
+      reason,
+      revertedBy: req.user?.email,
+    });
+
+    res.json({
       success: true,
-      message: "Record deleted successfully" 
+      message: "Record reverted successfully. Warehouse manager has been notified.",
+      reverted,
     });
   } catch (error) {
     res.status(400).json({ message: error.message });

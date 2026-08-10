@@ -1,6 +1,7 @@
 import EmptyBagRecord from "../models/EmptyBagRecord.js";
 import Warehouse from "../models/Warehouse.js";
 import User from "../models/User.js";
+import { notifyRecordReverted } from "../utils/notifyUser.js";
 
 // Create (auto-set warehouse)
 export const createEmptyBagRecord = async (req, res) => {
@@ -123,9 +124,23 @@ export const updateEmptyBagRecord = async (req, res) => {
       });
     }
 
+    // Never trust status-related fields from the client. Editing a record
+    // that was previously reverted resubmits it for DO review — status,
+    // reviewer, and rejection info always reset here, not from req.body.
+    const {
+      doVerified, doEmail, rejectionReason, rejectedAt,
+      warehouse, createdBy, _id, ...safeData
+    } = req.body;
+
     const updated = await EmptyBagRecord.findByIdAndUpdate(
       id,
-      req.body,
+      {
+        ...safeData,
+        doVerified: "DO Not Verified",
+        doEmail: "",
+        rejectionReason: "",
+        rejectedAt: null,
+      },
       { new: true }
     ).populate("warehouse", "name location");
 
@@ -203,12 +218,42 @@ export const deleteEmptyBagRecord = async (req, res) => {
         });
       }
     } else {
-      // Admin can delete only records inside their warehouse(s)
+      // Admin can only revert records inside their warehouse(s)
       if (record.warehouse.createdBy.toString() !== req.userId.toString()) {
         return res.status(403).json({
           message: "Record not from your warehouse."
         });
       }
+
+      // 🔁 REVERT instead of permanent delete.
+      // The record is kept, marked as rejected, and the warehouse manager
+      // is notified so it never silently disappears on them.
+      const { reason } = req.body;
+
+      const reverted = await EmptyBagRecord.findByIdAndUpdate(
+        id,
+        {
+          doVerified: "Rejected",
+          rejectionReason: (reason || "").trim() || "No reason provided by DO",
+          rejectedAt: new Date(),
+        },
+        { new: true }
+      );
+
+      await notifyRecordReverted({
+        recipientId: record.createdBy,
+        module: "EmptyBagRecord",
+        recordId: record._id,
+        formLabel: "Empty Bag Record",
+        reason,
+        revertedBy: req.user?.email,
+      });
+
+      return res.json({
+        success: true,
+        message: "Record reverted successfully. Warehouse manager has been notified.",
+        reverted,
+      });
     }
 
     await EmptyBagRecord.findByIdAndDelete(id);

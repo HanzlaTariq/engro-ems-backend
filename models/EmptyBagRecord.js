@@ -14,6 +14,8 @@ const emptyBagRecordSchema = new mongoose.Schema({
   whiInitial: { type: String, required: true },
   doVerified: { type: String, default: 'DO Not Verified' },
   doEmail: { type: String },
+  rejectionReason: { type: String, default: '' },
+  rejectedAt: { type: Date },
  createdBy: {  // User ID for isolation
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

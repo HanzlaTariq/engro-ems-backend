@@ -104,6 +104,8 @@ const quarterlySpotCheckSchema = new mongoose.Schema({
   remarks: String,
   doEmail: { type: String },
   doVerifiedAt: { type: Date },
+  rejectionReason: { type: String, default: "" },
+  rejectedAt: { type: Date },
 
   createdBy: {  // ✅ User ID for isolation
     type: mongoose.Schema.Types.ObjectId,
