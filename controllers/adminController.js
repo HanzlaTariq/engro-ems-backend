@@ -38,15 +38,12 @@ export const addAdmin = async (req, res) => {
 export const loginAdmin = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log('🔍 Admin login for:', email);
 
     const admin = await Admin.findOne({ email });
-    console.log('👤 Admin found:', !!admin);
 
     if (!admin) return res.status(401).json({ message: "Invalid credentials" });
 
     const isMatch = await bcrypt.compare(password, admin.password);
-    console.log('🔑 Password match:', isMatch);
 
     if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
@@ -55,7 +52,6 @@ export const loginAdmin = async (req, res) => {
       process.env.JWT_SECRET || "secretkey",
       { expiresIn: "7d" }
     );
-    console.log('✅ Token generated:', token.substring(0, 20) + '...');
 
     res.json({
       token,
