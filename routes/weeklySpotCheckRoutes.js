@@ -12,11 +12,14 @@ import auth from "../middleware/authMiddleware.js";
 import { verifyAdmin } from "../middleware/verifyAdmin.js";
 
 
+import { validateObjectIdParam } from "../middleware/security.js";
+
 const router = express.Router();
+router.param("id", validateObjectIdParam); // invalid id -> 400 (500 nahi)
 
 router.post("/", auth, createWeeklySpotCheck);
 router.get("/my", auth, getMyWeeklySpotCheck);  // User apne
-router.get("/", auth, getWeeklySpotCheck);  // Admin saare (filtered)
+router.get("/", auth, verifyAdmin, getWeeklySpotCheck);  // Admin saare (filtered)
 
 router.get("/:id", auth, getWeeklySpotCheckById); // Fetch one (owner) — used for edit prefill
 router.put("/:id", auth, updateWeeklySpotCheck); // User edit (blocked once verified)

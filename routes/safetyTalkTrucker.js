@@ -10,7 +10,10 @@ import {
 import auth from "../middleware/authMiddleware.js";  // Tera middleware
 import { verifyAdmin } from "../middleware/verifyAdmin.js";
 
+import { validateObjectIdParam } from "../middleware/security.js";
+
 const router = express.Router();
+router.param("id", validateObjectIdParam); // invalid id -> 400 (500 nahi)
 
 // ✅ User-specific routes
 router.post("/", auth, createSafetyTalkTrucker);

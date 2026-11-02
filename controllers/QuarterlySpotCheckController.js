@@ -6,7 +6,12 @@ import { notifyRecordReverted } from "../utils/notifyUser.js";
 // Create (auto-set warehouse)
 export const createQuarterlySpotCheck = async (req, res) => {
   try {
-    const formData = req.body;
+    // Status / ownership fields client se kabhi trust nahi (create par khud "Verified" karna roka)
+    const {
+      verifiedBy: _v, doEmail: _e, doVerifiedAt: _t, rejectionReason: _r, rejectedAt: _a,
+      warehouse: _w, createdBy: _c, _id: _i, ...clientData
+    } = req.body;
+    const formData = { ...clientData, verifiedBy: "DO Not Verified" };
 
     // Auto-set warehouse from user's primary warehouse
     const user = await User.findById(req.userId).populate('warehouse');
@@ -129,7 +134,7 @@ export const updateQuarterlySpotCheck = async (req, res) => {
 export const verifyQuarterlyspotcheck = async (req, res) => {
   try {
     const { id } = req.params;
-    const { adminEmail } = req.body;
+    const adminEmail = req.user?.email; // server se (client ki di hui email trust nahi)
 
     const record = await QuarterlySpotCheck.findById(id).populate("warehouse");
 
@@ -166,7 +171,7 @@ export const deleteQuarterlySpotCheck = async (req, res) => {
     }
 
     // If user is NOT admin → user logic applies
-    const isAdmin = await Warehouse.exists({ createdBy: req.userId });
+    const isAdmin = req.user?.role === "admin"; // role se check (pehle warehouse banane se admin ban jata tha)
 
     if (!isAdmin) {
       // User can delete only their records

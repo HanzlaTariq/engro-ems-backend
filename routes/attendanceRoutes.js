@@ -10,7 +10,10 @@ import {
 import verifyToken from "../middleware/authMiddleware.js";  // Tera auth middleware
 import { verifyAdmin } from "../middleware/verifyAdmin.js";
 
+import { validateObjectIdParam } from "../middleware/security.js";
+
 const router = express.Router();
+router.param("id", validateObjectIdParam); // invalid id -> 400 (500 nahi)
 
 router.post("/", verifyToken, createAttendance);  // ✅ Ye zaroori – middleware add kar
 router.get("/my", verifyToken, getMyAttendances);

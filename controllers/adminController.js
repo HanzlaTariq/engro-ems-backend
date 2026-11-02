@@ -1,113 +1,114 @@
 import Admin from "../models/Admin.js";
-import Warehouse from "../models/Warehouse.js";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import {
+  fakePasswordCheck,
+  isLocked,
+  lockMinutesLeft,
+  recordFailedLogin,
+  clearFailedLogins,
+  signToken,
+  jwtConfigured,
+} from "../utils/authHelpers.js";
+import { isEmail, isStrongPassword, PASSWORD_RULE_MSG } from "../middleware/security.js";
 
+const fail = (res, status, text) => res.status(status).json({ msg: text, message: text });
 
-
-
-
-// 🔹 Add new Admin
+// 🔹 Add new Admin  (route par auth + admin-only laga hai)
 export const addAdmin = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password } = req.body || {};
 
-    // Check if admin already exists
-    const existingAdmin = await Admin.findOne({ email });
-    if (existingAdmin) return res.status(400).json({ message: "Admin already exists" });
+    if (typeof name !== "string" || !name.trim() || name.length > 100) {
+      return fail(res, 400, "Valid name is required");
+    }
+    if (!isEmail(email)) return fail(res, 400, "Valid email is required");
+    if (!isStrongPassword(password)) return fail(res, 400, PASSWORD_RULE_MSG);
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const cleanEmail = email.trim().toLowerCase();
 
-    // Create new admin
+    const existingAdmin = await Admin.findOne({ email: cleanEmail });
+    if (existingAdmin) return fail(res, 400, "Admin already exists");
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
     const newAdmin = await Admin.create({
-      name,
-      email,
+      name: name.trim(),
+      email: cleanEmail,
       password: hashedPassword,
     });
 
-    res.status(201).json({ message: "Admin created successfully", admin: newAdmin });
+    // Password hash kabhi response mein nahi
+    res.status(201).json({
+      message: "Admin created successfully",
+      admin: { _id: newAdmin._id, name: newAdmin.name, email: newAdmin.email },
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("addAdmin error:", err.message);
+    return fail(res, 500, "Server error");
   }
 };
 
-
-
 export const loginAdmin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
-    const admin = await Admin.findOne({ email });
+    if (
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !email.trim() ||
+      !password ||
+      email.length > 254 ||
+      password.length > 200
+    ) {
+      return fail(res, 400, "Email and password are required");
+    }
 
-    if (!admin) return res.status(401).json({ message: "Invalid credentials" });
+    // Pehle yahan "secretkey" ka fallback tha — ab nahi. Secret na ho to login band.
+    if (!jwtConfigured()) {
+      console.error("JWT_SECRET is not configured");
+      return fail(res, 500, "Server misconfigured");
+    }
+
+    const cleanEmail = email.trim();
+
+    let admin = await Admin.findOne({ email: cleanEmail }).select("+password");
+    if (!admin && cleanEmail !== cleanEmail.toLowerCase()) {
+      admin = await Admin.findOne({ email: cleanEmail.toLowerCase() }).select("+password");
+    }
+
+    if (!admin) {
+      await fakePasswordCheck(password);
+      return fail(res, 400, "Invalid credentials");
+    }
+
+    if (isLocked(admin)) {
+      return fail(
+        res,
+        429,
+        `Too many failed attempts. Try again in ${lockMinutesLeft(admin)} minute(s).`
+      );
+    }
 
     const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) {
+      await recordFailedLogin(Admin, admin);
+      return fail(res, 400, "Invalid credentials");
+    }
 
-    if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+    await clearFailedLogins(Admin, admin);
 
-    const token = jwt.sign(
-      { _id: admin._id, role: "Admin" },
-      process.env.JWT_SECRET || "secretkey",
-      { expiresIn: "7d" }
-    );
+    const token = signToken({ id: admin._id, role: "Admin" });
 
     res.json({
       token,
       admin: {
         _id: admin._id,
         name: admin.name,
-        email: admin.email
-      }
+        email: admin.email,
+      },
     });
   } catch (err) {
-    console.error('💥 Login error:', err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-
-
-// 🔹 Add Warehouse In-charge
-export const addWarehouseIncharge = async (req, res) => {
-  try {
-    const { name, email, password, warehouseId } = req.body;
-
-    const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ msg: "User already exists" });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role: "WarehouseIncharge",
-      warehouses: [warehouseId],
-    });
-
-    const warehouse = await Warehouse.findById(warehouseId);
-    if (!warehouse) return res.status(404).json({ msg: "Warehouse not found" });
-
-    warehouse.incharge = newUser._id;
-    await warehouse.save();
-
-    res.status(201).json({ msg: "Warehouse In-charge added", user: newUser });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ msg: "Server error" });
-  }
-};
-
-// 🔹 Get DO's warehouses
-export const getWarehousesByDO = async (req, res) => {
-  try {
-    const doId = req.user._id; // set by verifyToken middleware
-    const warehouses = await Warehouse.find({ do: doId }).populate("incharge", "name email");
-    res.json(warehouses);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ msg: "Server error" });
+    console.error("Admin login error:", err.message);
+    return fail(res, 500, "Server error");
   }
 };

@@ -120,7 +120,7 @@ export const updateSafetyTalk = async (req, res) => {
 export const verifySafetyTalk = async (req, res) => {
   try {
     const { id } = req.params;
-    const { adminEmail } = req.body;
+    const adminEmail = req.user?.email; // server se (client ki di hui email trust nahi)
 
     const record = await SafetyTalk.findById(id).populate("warehouse");
 
@@ -158,7 +158,7 @@ export const deleteSafetyTalk = async (req, res) => {
       return res.status(404).json({ message: "Record not found" });
     }
 
-    const isAdmin = await Warehouse.exists({ createdBy: req.userId });
+    const isAdmin = req.user?.role === "admin"; // role se check (pehle warehouse banane se admin ban jata tha)
 
     if (!isAdmin) {
       if (record.createdBy.toString() !== req.userId.toString()) {

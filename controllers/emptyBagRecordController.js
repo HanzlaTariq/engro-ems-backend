@@ -162,7 +162,7 @@ export const updateEmptyBagRecord = async (req, res) => {
 export const verifyEmptyBagRecord = async (req, res) => {
   try {
     const { id } = req.params;
-    const { adminEmail } = req.body;
+    const adminEmail = req.user?.email; // server se (client ki di hui email trust nahi)
 
     const record = await EmptyBagRecord.findById(id).populate("warehouse");
 
@@ -201,7 +201,7 @@ export const deleteEmptyBagRecord = async (req, res) => {
     }
 
     // If user is NOT admin → user logic applies
-    const isAdmin = await Warehouse.exists({ createdBy: req.userId });
+    const isAdmin = req.user?.role === "admin"; // role se check (pehle warehouse banane se admin ban jata tha)
 
     if (!isAdmin) {
       // User can delete only their records

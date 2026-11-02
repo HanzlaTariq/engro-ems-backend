@@ -1,24 +1,19 @@
 import express from "express";
-import { loginAdmin, addWarehouseIncharge, getWarehousesByDO } from "../controllers/adminController.js";
-import  verifyToken  from "../middleware/authMiddleware.js"; // JWT verify middleware
-import { addAdmin } from "../controllers/adminController.js";
+import { loginAdmin, addAdmin } from "../controllers/adminController.js";
+import auth from "../middleware/authMiddleware.js";
+import { requireRole } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-// Admin login (no token required)
+// Admin login (no token required, rate-limited + lockout)
 router.post("/login", loginAdmin);
 
-// Protected routes
-router.post("/add-incharge", verifyToken, addWarehouseIncharge);
-router.get("/warehouses", verifyToken, getWarehousesByDO);
-// Protected route: only logged-in admin can add another admin
-router.post("/add-admin", verifyToken, addAdmin);
+// Sirf logged-in ADMIN naya admin bana sakta hai
+router.post("/add-admin", auth, requireRole("admin"), addAdmin);
 
-
-
-// ⚠️ TEMPORARY – only for first admin
-router.post("/create-first-admin", addAdmin);
-
-
+// NOTE:
+// - /create-first-admin hata diya (koi bhi bina login ke admin bana sakta tha).
+//   Pehla admin ab `node scripts/createAdmin.js` se banega.
+// - /add-incharge aur /warehouses (DO) purane aur toot-e hue the, hata diye.
 
 export default router;

@@ -1,13 +1,11 @@
 // routes/authRoutes.js
 import express from "express";
-import { register, login } from "../controllers/authController.js";
+import { login } from "../controllers/authController.js";
 
 const router = express.Router();
 
-// Register route
-router.post("/register", register);
-
-// Login route
+// Login route (rate limit + account lockout laga hua hai)
+// NOTE: Public /register route hata diya gaya hai (security risk tha).
 router.post("/login", login);
 
 export default router;

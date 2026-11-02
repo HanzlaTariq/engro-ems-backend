@@ -132,7 +132,7 @@ export const getAttendances = async (req, res) => {
 export const verifyAttendance = async (req, res) => {
   try {
     const { id } = req.params;
-    const { adminEmail } = req.body;
+    const adminEmail = req.user?.email; // server se (client ki di hui email trust nahi)
 
     const record = await Attendance.findById(id).populate("warehouse");
 
