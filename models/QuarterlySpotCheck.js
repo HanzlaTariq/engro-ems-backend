@@ -79,14 +79,18 @@ const quarterlySpotCheckSchema = new mongoose.Schema({
     seal: String
   }],
   safetyRamp: [{
-    frequently: String,
+    name: String,
+    isCustom: { type: Boolean, default: false },
+    frequently: String, // legacy (purane records)
     status: String,
     remarks: String
   }],
   srlHarness: [{
+    name: String,
+    isCustom: { type: Boolean, default: false },
     status: String,
     remarks: String,
-    freq: String
+    freq: String // legacy (purane records)
   }],
   emergencyNumbers: {
     fireBrigade: String,
