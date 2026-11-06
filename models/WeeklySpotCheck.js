@@ -12,6 +12,10 @@ const weeklySpotCheckSchema = new mongoose.Schema({
     remarks: String
   }],
   elcb: {
+    dateRow: { value: String, month: String, whi: String, electrician: String, comment: String },
+    monthRow: { value: String, month: String, whi: String, electrician: String, comment: String },
+    quarterRow: { value: String, month: String, whi: String, electrician: String, comment: String },
+    // legacy (purane records)
     weekly: {
       month: String,
       whi: String,
